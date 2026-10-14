@@ -1,425 +1,178 @@
 <!DOCTYPE html>
-<html lang="ru" class="h-full">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Земли Крыма: Торги</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Земли Крыма | Торги</title>
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        darkBg: '#0f172a',
-                        cardBg: '#1e293b',
-                        accentGreen: '#10b981',
-                        accentYellow: '#f59e0b',
-                        accentRed: '#ef4444',
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            overflow: hidden;
-            touch-action: manipulation;
+        :root {
+            --tg-theme-bg-color: #18222d;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #8ab4f8;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #ffffff;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--tg-theme-bg-color, #18222d);
+            color: var(--tg-theme-text-color, #ffffff);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            padding: 12px 16px;
+            background: rgba(24, 34, 45, 0.95);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-subtitle {
+            font-size: 12px;
+            color: #8ab4f8;
+            margin-top: 2px;
+        }
+        .filters {
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            overflow-x: auto;
+            background: rgba(24, 34, 45, 0.9);
+            z-index: 1000;
+            scrollbar-width: none;
+        }
+        .filters::-webkit-scrollbar {
+            display: none;
+        }
+        .chip {
+            background: #2b3847;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .chip.active {
+            background: #2481cc;
         }
         #map {
+            flex-grow: 1;
             width: 100%;
-            height: 100vh;
-            z-index: 1;
+            background: #10171d;
         }
-        /* Custom Leaflet Dark Mode Adjustments */
-        .leaflet-container {
-            background: #0f172a !important;
-        }
-        /* Custom Marker Pulse */
-        @keyframes pulse-green {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
+        /* Стили кастомных маркеров */
         .custom-marker {
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 9999px;
-            font-weight: 700;
-            font-size: 11px;
+            border-radius: 50%;
             color: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-            border: 2px solid white;
+            font-weight: bold;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            border: 2px solid #fff;
         }
-        .marker-green { background-color: #10b981; animation: pulse-green 2s infinite; }
-        .marker-yellow { background-color: #f59e0b; }
-        .marker-red { background-color: #ef4444; }
-
-        /* Smooth Bottom Sheet Transition */
-        .bottom-sheet {
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            transform: translateY(100%);
-        }
-        .bottom-sheet.open {
-            transform: translateY(0);
-        }
+        .marker-high { background-color: #2ecc71; }
+        .marker-mid { background-color: #e67e22; }
     </style>
 </head>
-<body class="h-full flex flex-col relative select-none">
+<body>
+    <div id="app">
+        <header>
+            <div class="header-title">
+                <span>🗺️ Земли Крыма | Торги</span>
+            </div>
+            <div class="header-subtitle">ИЖС & ЛПХ • Онлайн сканер</div>
+        </header>
 
-    <!-- Top Filter Bar -->
-    <header class="absolute top-0 left-0 right-0 z-20 p-3 bg-darkBg/80 backdrop-blur-md border-b border-slate-800 shadow-lg flex flex-col gap-2">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-md">
-                    <i class="fa-solid fa-map-location-dot text-white text-sm"></i>
-                </div>
-                <div>
-                    <h1 class="text-xs font-bold text-slate-100 leading-tight">Земли Крыма | Торги</h1>
-                    <p class="text-[10px] text-emerald-400 font-medium">ИЖС &amp; ЛПХ • Онлайн сканер</p>
-                </div>
-            </div>
-            <div class="flex items-center space-x-2">
-                <button onclick="resetMapView()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 transition active:scale-95 flex items-center gap-1.5">
-                    <i class="fa-solid fa-location-crosshairs text-emerald-400"></i> Крым
-                </button>
-            </div>
+        <div class="filters">
+            <button class="chip active" onclick="filterLots('all')">Все участки</button>
+            <button class="chip" onclick="filterLots('hot')">🔥 Выгода >50%</button>
+            <button class="chip" onclick="filterLots('yalta')">Ялта / ЮБК</button>
         </div>
 
-        <!-- Horizontal Scrollable Filters -->
-        <div class="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-1 text-xs">
-            <button onclick="filterLots('all')" id="filter-all" class="filter-btn px-3 py-1 bg-emerald-600 text-white rounded-full font-medium whitespace-nowrap shadow-sm transition">Все участки</button>
-            <button onclick="filterLots('green')" id="filter-green" class="filter-btn px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-full font-medium whitespace-nowrap transition">🔥 Выгода &gt;50%</button>
-            <button onclick="filterLots('yalta')" id="filter-yalta" class="filter-btn px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-full font-medium whitespace-nowrap transition">Ялта / ЮБК</button>
-            <button onclick="filterLots('simf')" id="filter-simf" class="filter-btn px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-full font-medium whitespace-nowrap transition">Симферопольский р-н</button>
-            <button onclick="filterLots('sale')" id="filter-sale" class="filter-btn px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-full font-medium whitespace-nowrap transition">Прямая продажа</button>
-        </div>
-    </header>
-
-    <!-- Interactive Map Container -->
-    <main class="flex-1 relative w-full h-full">
         <div id="map"></div>
-    </main>
-
-    <!-- Bottom Sheet Details Drawer -->
-    <div id="bottom-sheet" class="bottom-sheet fixed bottom-0 left-0 right-0 z-30 bg-cardBg border-t border-slate-700 rounded-t-2xl shadow-2xl p-4 max-h-[80vh] overflow-y-auto">
-        <div class="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mb-3 cursor-pointer" onclick="closeBottomSheet()"></div>
-        
-        <div id="sheet-content">
-            <!-- Dynamic Lot Details injected here -->
-        </div>
-    </div>
-
-    <!-- Toast Notification Box -->
-    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 bg-slate-900 border border-emerald-500/50 text-slate-100 px-4 py-2 rounded-xl shadow-2xl text-xs flex items-center space-x-2 transition-all duration-300 opacity-0 pointer-events-none">
-        <i class="fa-solid fa-circle-check text-emerald-400"></i>
-        <span id="toast-text">Участок сохранен в избранное!</span>
     </div>
 
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Mock Database of Real Crimea Auctions (IZhS / LPH)
-        const lotsData = [
-            {
-                id: 1,
-                title: "Участок ИЖС в курортной зоне",
-                address: "Республика Крым, г. Ялта, пгт. Гаспра",
-                lat: 44.4361,
-                lng: 34.1185,
-                area: 6.5, // сотки
-                startPrice: 480000,
-                marketPrice: 3200000,
-                profitPercent: 85,
-                type: "Продажа в собственность",
-                category: "ИЖС",
-                deadline: "25.04.2026",
-                cadastral: "90:25:070101:142",
-                district: "yalta",
-                tag: "green"
-            },
-            {
-                id: 2,
-                title: "Земли под ЛПХ у трассы и леса",
-                address: "Симферопольский р-н, с. Доброе",
-                lat: 44.8812,
-                lng: 34.2514,
-                area: 10.0,
-                startPrice: 290000,
-                marketPrice: 1450000,
-                profitPercent: 80,
-                type: "Аренда на 20 лет",
-                category: "ЛПХ",
-                deadline: "28.04.2026",
-                cadastral: "90:22:010304:88",
-                district: "simf",
-                tag: "green"
-            },
-            {
-                id: 3,
-                title: "Перспективный участок ИЖС",
-                address: "г. Севастополь, Балаклавский район",
-                lat: 44.5501,
-                lng: 33.6019,
-                area: 8.0,
-                startPrice: 850000,
-                marketPrice: 2100000,
-                profitPercent: 60,
-                type: "Продажа в собственность",
-                category: "ИЖС",
-                deadline: "02.05.2026",
-                cadastral: "91:01:021001:512",
-                district: "sevastopol",
-                tag: "green"
-            },
-            {
-                id: 4,
-                title: "Участок под строительство дома",
-                address: "Республика Крым, Бахчисарайский р-н, с. Скалистое",
-                lat: 44.7823,
-                lng: 33.9912,
-                area: 12.0,
-                startPrice: 350000,
-                marketPrice: 980000,
-                profitPercent: 64,
-                type: "Продажа в собственность",
-                category: "ИЖС",
-                deadline: "05.05.2026",
-                cadastral: "90:01:110201:99",
-                district: "other",
-                tag: "green"
-            },
-            {
-                id: 5,
-                title: "Земельный участок (ЛПХ)",
-                address: "Республика Крым, г. Алушта, с. Изобильное",
-                lat: 44.6854,
-                lng: 34.3981,
-                area: 7.2,
-                startPrice: 920000,
-                marketPrice: 1800000,
-                profitPercent: 48,
-                type: "Продажа в собственность",
-                category: "ЛПХ",
-                deadline: "10.05.2026",
-                cadastral: "90:15:020101:33",
-                district: "yalta",
-                tag: "yellow"
-            },
-            {
-                id: 6,
-                title: "Участок под ИЖС в пригороде",
-                address: "Республика Крым, г. Симферополь, с. Чистенькое",
-                lat: 44.9123,
-                lng: 34.0512,
-                area: 6.0,
-                startPrice: 750000,
-                marketPrice: 1200000,
-                profitPercent: 37,
-                type: "Продажа в собственность",
-                category: "ИЖС",
-                deadline: "12.05.2026",
-                cadastral: "90:22:010101:771",
-                district: "simf",
-                tag: "yellow"
-            }
+        // Инициализация Telegram WebApp
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Центр Крыма (Симферополь/Бахчисарай)
+        const map = L.map('map', {
+            zoomControl: false
+        }).setView([44.9521, 34.1024], 9);
+
+        // Добавляем бесплатную подложку OpenStreetMap (без водяных знаков Carto)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Эмуляция данных участков (позже заменим на реальный парсер)
+        const lots = [
+            id = 1, lat: 44.95, lng: 34.10, discount: -64, title: "ИЖС Симферопольский р-н" },
+            { id: 2, lat: 44.50, lng: 34.16, discount: -37, title: "ЛПХ ЮБК (Ялта)" },
+            { id: 3, lat: 45.35, lng: 36.46, discount: -85, title: "ИЖС г. Керчь" },
+            { id: 4, lat: 44.61, lng: 33.52, discount: -60, title: "ИЖС Севастополь" },
+            { id: 5, lat: 44.48, lng: 34.58, discount: -48, title: "ЛПХ Алушта" },
+            { id: 6, lat: 45.18, lng: 33.36, discount: -80, title: "ИЖС Евпатория" }
         ];
 
-        let map;
-        let markersLayer = L.layerGroup();
-        let currentFilter = 'all';
+        let markersLayer = L.layerGroup().addTo(map);
 
-        // Initialize Map centered on Crimea
-        function initMap() {
-            // Crimea center coordinates [Lat, Lng]
-            map = L.map('map', {
-                zoomControl: false
-            }).setView([45.100, 34.400], 8);
-
-            // Dark Matter tile layer for crypto/real-estate aesthetic
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(map);
-
-            markersLayer.addTo(map);
-            renderMarkers(lotsData);
-        }
-
-        // Render Map Markers based on data
         function renderMarkers(data) {
             markersLayer.clearLayers();
-            
             data.forEach(lot => {
-                let badgeClass = 'marker-yellow';
-                if (lot.profitPercent >= 50) badgeClass = 'marker-green';
-                else if (lot.profitPercent < 30) badgeClass = 'marker-red';
-
-                // Custom HTML Icon
-                const customIcon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div class="custom-marker ${badgeClass} w-9 h-9 text-xs shadow-lg">-${lot.profitPercent}%</div>`,
-                    iconSize: [36, 36],
-                    iconAnchor: [18, 18]
+                let colorClass = lot.discount <= -70 ? 'marker-high' : 'marker-mid';
+                let htmlIcon = L.divIcon({
+                    className: 'custom-marker ' + colorClass,
+                    html: `<span>${lot.discount}%</span>`,
+                    iconSize: [40, 40]
                 });
 
-                const marker = L.marker([lot.lat, lot.lng], { icon: customIcon });
-                
-                marker.on('click', () => {
-                    openBottomSheet(lot);
-                    map.flyTo([lot.lat, lot.lng], 12, { duration: 0.8 });
-                });
-
+                let marker = L.marker([lot.lat, lot.lng], { icon: htmlIcon });
+                marker.bindPopup(`<b>${lot.title}</b><br>Выгода: ${lot.discount}%<br><a href="#" onclick="alert('Детали лота скоро будут доступны!')">Открыть лот</a>`);
                 markersLayer.addLayer(marker);
             });
         }
 
-        // Filter Functionality
+        renderMarkers(lots);
+
         function filterLots(type) {
-            currentFilter = type;
-            
-            // Update button styles
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-emerald-600', 'text-white', 'shadow-sm');
-                btn.classList.add('bg-slate-800', 'text-slate-300', 'border', 'border-slate-700');
-            });
+            // Переключение активных кнопок
+            document.querySelectorAll('.chip').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
 
-            const activeBtn = document.getElementById(`filter-${type}`);
-            if(activeBtn) {
-                activeBtn.classList.remove('bg-slate-800', 'text-slate-300', 'border', 'border-slate-700');
-                activeBtn.classList.add('bg-emerald-600', 'text-white', 'shadow-sm');
-            }
-
-            let filtered = lotsData;
-            if (type === 'green') {
-                filtered = lotsData.filter(l => l.profitPercent >= 50);
+            if (type === 'all') {
+                renderMarkers(lots);
+            } else if (type === 'hot') {
+                renderMarkers(lots.filter(l => l.discount <= -60));
             } else if (type === 'yalta') {
-                filtered = lotsData.filter(l => l.district === 'yalta');
-            } else if (type === 'simf') {
-                filtered = lotsData.filter(l => l.district === 'simf');
-            } else if (type === 'sale') {
-                filtered = lotsData.filter(l => l.type.includes('Продажа'));
+                renderMarkers(lots.filter(l => l.title.includes('Ялта') || l.title.includes('Алушта')));
             }
-
-            renderMarkers(filtered);
         }
-
-        // Reset View to full Crimea
-        function resetMapView() {
-            map.flyTo([45.100, 34.400], 8, { duration: 0.8 });
-            closeBottomSheet();
-        }
-
-        // Open Bottom Sheet with Details
-        function openBottomSheet(lot) {
-            const sheet = document.getElementById('bottom-sheet');
-            const content = document.getElementById('sheet-content');
-
-            const profitRubles = lot.marketPrice - lot.startPrice;
-            const pricePerSotka = Math.round(lot.startPrice / lot.area).toLocaleString('ru-RU');
-
-            content.innerHTML = `
-                <div class="flex items-start justify-between mb-2">
-                    <div>
-                        <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">${lot.category} • ${lot.type}</span>
-                        <h2 class="text-base font-bold text-slate-100 mt-1">${lot.title}</h2>
-                    </div>
-                    <span class="text-xs bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-xl shadow-md">-${lot.profitPercent}% профит</span>
-                </div>
-
-                <p class="text-xs text-slate-400 mb-4 flex items-center gap-1.5">
-                    <i class="fa-solid fa-location-dot text-emerald-400"></i> ${lot.address}
-                </p>
-
-                <!-- Financial Card Grid -->
-                <div class="grid grid-cols-2 gap-2.5 mb-4">
-                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                        <span class="text-[10px] text-slate-400 block">Стартовая цена</span>
-                        <span class="text-sm font-bold text-emerald-400">${lot.startPrice.toLocaleString('ru-RU')} ₽</span>
-                        <span class="text-[9px] text-slate-500 block mt-0.5">${pricePerSotka} ₽ / сотка</span>
-                    </div>
-                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                        <span class="text-[10px] text-slate-400 block">Рыночная оценка</span>
-                        <span class="text-sm font-bold text-slate-200">${lot.marketPrice.toLocaleString('ru-RU')} ₽</span>
-                        <span class="text-[9px] text-emerald-400 font-medium block mt-0.5">Выгода +${profitRubles.toLocaleString('ru-RU')} ₽</span>
-                    </div>
-                </div>
-
-                <!-- Specs List -->
-                <div class="space-y-2 text-xs mb-5 bg-slate-900/40 p-3 rounded-xl border border-slate-800/80">
-                    <div class="flex justify-between">
-                        <span class="text-slate-400">Площадь участка:</span>
-                        <span class="font-semibold text-slate-200">${lot.area} соток</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-400">Кадастровый номер:</span>
-                        <span class="font-mono text-emerald-300 font-medium">${lot.cadastral}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-400">Окончание приема заявок:</span>
-                        <span class="font-semibold text-amber-400">${lot.deadline}</span>
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="flex items-center gap-2">
-                    <button onclick="saveToFavorites('${lot.cadastral}')" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-98 border border-slate-700 text-slate-200 text-xs font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
-                        <i class="fa-regular fa-bookmark text-emerald-400"></i> В избранное
-                    </button>
-                    <button onclick="submitApplication('${lot.cadastral}')" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 active:scale-98 text-white text-xs font-semibold py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-file-contract"></i> Подать заявку
-                    </button>
-                </div>
-            `;
-
-            sheet.classList.add('open');
-        }
-
-        // Close Bottom Sheet
-        function closeBottomSheet() {
-            const sheet = document.getElementById('bottom-sheet');
-            sheet.classList.remove('open');
-        }
-
-        // Interactive Feedback Toasts
-        function showToast(text) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-text').innerText = text;
-            toast.classList.remove('opacity-0', 'pointer-events-none');
-            toast.classList.add('opacity-100');
-            setTimeout(() => {
-                toast.classList.remove('opacity-100');
-                toast.classList.add('opacity-0', 'pointer-events-none');
-            }, 2500);
-        }
-
-        function saveToFavorites(cadastral) {
-            showToast(`Участок ${cadastral} добавлен в избранное!`);
-        }
-
-        function submitApplication(cadastral) {
-            showToast(`Запрос на сопровождение лота ${cadastral} отправлен!`);
-        }
-
-        // Run map on window load
-        window.onload = function() {
-            initMap();
-        };
     </script>
 </body>
 </html>
