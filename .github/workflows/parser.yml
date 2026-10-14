@@ -1,0 +1,31 @@
+name: Hourly Torgi Parser
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Запуск каждый час
+  workflow_dispatch:    # Позволяет запускать вручную кнопкой с сайта GitHub
+
+jobs:
+  run-parser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run parser script
+        run: python parser.py
+
+      - name: Commit and push if lots.json changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add lots.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update lots.json from torgi.gov.ru" && git push)
