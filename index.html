@@ -26,15 +26,8 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             z-index: 1000;
         }
-        .header-title {
-            font-size: 16px;
-            font-weight: 700;
-        }
-        .header-subtitle {
-            font-size: 12px;
-            color: #8ab4f8;
-            margin-top: 2px;
-        }
+        .header-title { font-size: 16px; font-weight: 700; }
+        .header-subtitle { font-size: 12px; color: #8ab4f8; margin-top: 2px; }
         .filters {
             display: flex;
             gap: 8px;
@@ -53,14 +46,8 @@
             white-space: nowrap;
             cursor: pointer;
         }
-        .chip.active {
-            background: #2481cc;
-        }
-        #map {
-            flex-grow: 1;
-            width: 100%;
-            background: #10171d;
-        }
+        .chip.active { background: #2481cc; }
+        #map { flex-grow: 1; width: 100%; background: #10171d; }
         .custom-marker {
             display: flex;
             align-items: center;
@@ -97,30 +84,29 @@
         let tg = window.Telegram.WebApp;
         tg.expand();
 
-        const map = L.map('map', {
-            zoomControl: false
-        }).setView([44.9521, 34.1024], 9);
+        const map = L.map('map', { zoomControl: false }).setView([44.9521, 34.1024], 9);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        const lots = [
-            { id: 1, lat: 44.95, lng: 34.10, discount: -64, title: "ИЖС Симферопольский р-н" },
-            { id: 2, lat: 44.50, lng: 34.16, discount: -37, title: "ЛПХ ЮБК (Ялта)" },
-            { id: 3, lat: 45.35, lng: 36.46, discount: -85, title: "ИЖС г. Керчь" },
-            { id: 4, lat: 44.61, lng: 33.52, discount: -60, title: "ИЖС Севастополь" },
-            { id: 5, lat: 44.48, lng: 34.58, discount: -48, title: "ЛПХ Алушта" },
-            { id: 6, lat: 45.18, lng: 33.36, discount: -80, title: "ИЖС Евпатория" }
-        ];
-
+        let allLots = [];
         let markersLayer = L.layerGroup().addTo(map);
+
+        // Подгружаем данные из lots.json
+        fetch('./lots.json?v=' + new Date().getTime())
+            .then(response => response.json())
+            .then(data => {
+                allLots = data;
+                renderMarkers(allLots);
+            })
+            .catch(err => console.error("Ошибка загрузки участков:", err));
 
         function renderMarkers(data) {
             markersLayer.clearLayers();
             data.forEach(lot => {
-                let colorClass = lot.discount <= -70 ? 'marker-high' : 'marker-mid';
+                let colorClass = lot.discount <= -50 ? 'marker-high' : 'marker-mid';
                 let htmlIcon = L.divIcon({
                     className: 'custom-marker ' + colorClass,
                     html: `<span>${lot.discount}%</span>`,
@@ -128,23 +114,21 @@
                 });
 
                 let marker = L.marker([lot.lat, lot.lng], { icon: htmlIcon });
-                marker.bindPopup(`<b>${lot.title}</b><br>Выгода: ${lot.discount}%`);
+                marker.bindPopup(`<b>${lot.title}</b><br>Старт: ${lot.price || 'по запросу'}<br>Выгода: ${lot.discount}%`);
                 markersLayer.addLayer(marker);
             });
         }
-
-        renderMarkers(lots);
 
         function filterLots(type) {
             document.querySelectorAll('.chip').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
 
             if (type === 'all') {
-                renderMarkers(lots);
+                renderMarkers(allLots);
             } else if (type === 'hot') {
-                renderMarkers(lots.filter(l => l.discount <= -60));
+                renderMarkers(allLots.filter(l => l.discount <= -50));
             } else if (type === 'yalta') {
-                renderMarkers(lots.filter(l => l.title.includes('Ялта') || l.title.includes('Алушта')));
+                renderMarkers(allLots.filter(l => l.title.includes('Ялта')));
             }
         }
     </script>
