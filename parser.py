@@ -3,33 +3,26 @@ import requests
 
 TORGI_API_URL = "https://torgi.gov.ru/new/api/public/lotcards/search"
 
-def get_proxy_from_free_source():
-    # Загружаем свежий список публичных прокси
-    proxy_urls = [
-        "https://raw.githubusercontent.com/thelegendofthecow/free-proxy-list/master/proxy_list.json",
-        "https://www.proxy-list.download/api/v1/get?type=https"
-    ]
-    
-    print("Получаем список актуальных прокси...")
-    # Добавляем стандартные запасные варианты на случай недоступности списков
-    working_proxies = [
-        "http://200.174.198.83:8888",
-        "http://190.61.88.147:8080",
-        "http://43.153.86.13:80"
-    ]
-    
-    for p in working_proxies:
-        proxy_dict = {"http": p, "https": p}
-        try:
-            test = requests.get("https://httpbin.org/ip", proxies=proxy_dict, timeout=4)
-            if test.status_code == 200:
-                print(f"Найден рабочий прокси: {p}")
-                return proxy_dict
-        except:
-            continue
-            
-    # Если ничего не подошло, пробуем без прокси (напрямую)
-    print("Рабочие прокси не найдены, пробуем прямое соединение...")
+def get_live_proxy():
+    try:
+        # Автоматически запрашиваем свежий рабочий прокси из публичного пула с поддержкой HTTPS
+        res = requests.get("https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=5000&country=all&ssl=all", timeout=5)
+        if res.status_code == 200:
+            proxies = res.text.splitlines()
+            for p in proxies[:5]: # Проверяем первые 5 штук
+                p = p.strip()
+                if p:
+                    proxy_dict = {"http": f"http://{p}", "https": f"http://{p}"}
+                    try:
+                        test = requests.get("https://httpbin.org/ip", proxies=proxy_dict, timeout=3)
+                        if test.status_code == 200:
+                            print(f"Найден рабочий динамический прокси: {p}")
+                            return proxy_dict
+                    except:
+                        continue
+    except Exception as e:
+        print(f"Не удалось получить прокси из API: {e}")
+        
     return None
 
 def parse_crimea_lands():
@@ -51,8 +44,8 @@ def parse_crimea_lands():
     }
 
     try:
-        current_proxy = get_proxy_from_free_source()
-        print("Отправка запроса к torgi.gov.ru...")
+        current_proxy = get_live_proxy()
+        print("Отправка запроса к torgi.gov.ru с динамическим прокси...")
         
         response = requests.post(
             TORGI_API_URL, 
@@ -93,14 +86,14 @@ def parse_crimea_lands():
                 
                 with open("lots.json", "w", encoding="utf-8") as f:
                     json.dump(parsed_lots, f, ensure_ascii=False, indent=4)
-                print("Файл lots.json успешно обновлен через динамический прокси!")
+                print("Файл lots.json успешно обновлен!")
             else:
                 print("API ответил успешно, но список лотов по Крыму пуст.")
         else:
-            print(f"Ошибка сервера: {response.status_code} - {response.text[:200]}")
+            print(f"Ошибка сервера: {response.status_code}")
             
     except Exception as e:
-        print(f"Критическая ошибка запроса: {e}")
+        print(f"Ошибка запроса: {e}")
 
 if __name__ == "__main__":
     parse_crimea_lands()
