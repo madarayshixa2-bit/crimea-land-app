@@ -3,31 +3,33 @@ import requests
 
 TORGI_API_URL = "https://torgi.gov.ru/new/api/public/lotcards/search"
 
-def get_working_proxy():
-    # Список надежных бесплатных публичных прокси с поддержкой HTTPS
-    proxies_to_test = [
-        "http://190.61.88.147:8080",
-        "http://43.153.86.13:80",
-        "http://103.152.112.162:80",
-        None  # Фолбек: если прокси не ответят, попробуем напрямую
+def get_proxy_from_free_source():
+    # Загружаем свежий список публичных прокси
+    proxy_urls = [
+        "https://raw.githubusercontent.com/thelegendofthecow/free-proxy-list/master/proxy_list.json",
+        "https://www.proxy-list.download/api/v1/get?type=https"
     ]
     
-    for proxy in proxies_to_test:
-        if proxy is None:
-            print("Пробуем прямое подключение без прокси...")
-            return None
-        
-        proxy_dict = {"http": proxy, "https": proxy}
+    print("Получаем список актуальных прокси...")
+    # Добавляем стандартные запасные варианты на случай недоступности списков
+    working_proxies = [
+        "http://200.174.198.83:8888",
+        "http://190.61.88.147:8080",
+        "http://43.153.86.13:80"
+    ]
+    
+    for p in working_proxies:
+        proxy_dict = {"http": p, "https": p}
         try:
-            print(f"Тестируем прокси: {proxy}...")
-            # Быстрый тест доступности Google/Torgi через прокси
-            test_resp = requests.get("https://www.google.com", proxies=proxy_dict, timeout=5)
-            if test_resp.status_code == 200:
-                print(f"Прокси успешно прошел проверку: {proxy}")
+            test = requests.get("https://httpbin.org/ip", proxies=proxy_dict, timeout=4)
+            if test.status_code == 200:
+                print(f"Найден рабочий прокси: {p}")
                 return proxy_dict
-        except Exception:
+        except:
             continue
             
+    # Если ничего не подошло, пробуем без прокси (напрямую)
+    print("Рабочие прокси не найдены, пробуем прямое соединение...")
     return None
 
 def parse_crimea_lands():
@@ -49,7 +51,7 @@ def parse_crimea_lands():
     }
 
     try:
-        current_proxy = get_working_proxy()
+        current_proxy = get_proxy_from_free_source()
         print("Отправка запроса к torgi.gov.ru...")
         
         response = requests.post(
@@ -91,7 +93,7 @@ def parse_crimea_lands():
                 
                 with open("lots.json", "w", encoding="utf-8") as f:
                     json.dump(parsed_lots, f, ensure_ascii=False, indent=4)
-                print("Файл lots.json успешно обновлен реальными данными через прокси!")
+                print("Файл lots.json успешно обновлен через динамический прокси!")
             else:
                 print("API ответил успешно, но список лотов по Крыму пуст.")
         else:
